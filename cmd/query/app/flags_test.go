@@ -94,9 +94,9 @@ func TestBuildQueryServiceOptions(t *testing.T) {
 
 	qSvcOpts := qOpts.BuildQueryServiceOptions(&mocks.Factory{}, zap.NewNop())
 	assert.NotNil(t, qSvcOpts)
-	assert.NotNil(t, qSvcOpts.Adjuster)
 	assert.Nil(t, qSvcOpts.ArchiveSpanReader)
 	assert.Nil(t, qSvcOpts.ArchiveSpanWriter)
+	assert.Equal(t, defaultMaxClockSkewAdjust, qSvcOpts.MaxClockSkewAdjust)
 
 	comboFactory := struct {
 		*mocks.Factory
@@ -111,9 +111,9 @@ func TestBuildQueryServiceOptions(t *testing.T) {
 
 	qSvcOpts = qOpts.BuildQueryServiceOptions(comboFactory, zap.NewNop())
 	assert.NotNil(t, qSvcOpts)
-	assert.NotNil(t, qSvcOpts.Adjuster)
 	assert.NotNil(t, qSvcOpts.ArchiveSpanReader)
 	assert.NotNil(t, qSvcOpts.ArchiveSpanWriter)
+	assert.Equal(t, defaultMaxClockSkewAdjust, qSvcOpts.MaxClockSkewAdjust)
 }
 
 func TestBuildQueryServiceOptionsV2(t *testing.T) {
@@ -124,9 +124,9 @@ func TestBuildQueryServiceOptionsV2(t *testing.T) {
 
 	qSvcOpts := qOpts.BuildQueryServiceOptionsV2(&mocks.Factory{}, zap.NewNop())
 	assert.NotNil(t, qSvcOpts)
-	assert.NotNil(t, qSvcOpts.Adjuster)
 	assert.Nil(t, qSvcOpts.ArchiveTraceReader)
 	assert.Nil(t, qSvcOpts.ArchiveTraceWriter)
+	assert.Equal(t, defaultMaxClockSkewAdjust, qSvcOpts.MaxClockSkewAdjust)
 
 	comboFactory := struct {
 		*mocks.Factory
@@ -141,9 +141,9 @@ func TestBuildQueryServiceOptionsV2(t *testing.T) {
 
 	qSvcOpts = qOpts.BuildQueryServiceOptionsV2(comboFactory, zap.NewNop())
 	assert.NotNil(t, qSvcOpts)
-	assert.NotNil(t, qSvcOpts.Adjuster)
 	assert.NotNil(t, qSvcOpts.ArchiveTraceReader)
 	assert.NotNil(t, qSvcOpts.ArchiveTraceWriter)
+	assert.Equal(t, defaultMaxClockSkewAdjust, qSvcOpts.MaxClockSkewAdjust)
 }
 
 func TestBuildQueryServiceOptionsV2_NoArchiveStorage(t *testing.T) {

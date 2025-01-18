@@ -23,9 +23,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/jaegertracing/jaeger/cmd/query/app/querysvc"
-	v2adjuster "github.com/jaegertracing/jaeger/cmd/query/app/querysvc/v2/adjuster"
 	v2querysvc "github.com/jaegertracing/jaeger/cmd/query/app/querysvc/v2/querysvc"
-	"github.com/jaegertracing/jaeger/model/adjuster"
 	"github.com/jaegertracing/jaeger/pkg/config"
 	"github.com/jaegertracing/jaeger/pkg/config/tlscfg"
 	"github.com/jaegertracing/jaeger/pkg/tenancy"
@@ -45,6 +43,10 @@ const (
 	queryAdditionalHeaders     = "query.additional-headers"
 	queryMaxClockSkewAdjust    = "query.max-clock-skew-adjustment"
 	queryEnableTracing         = "query.enable-tracing"
+)
+
+const (
+	defaultMaxClockSkewAdjust = 0 * time.Second
 )
 
 var tlsGRPCFlagsConfig = tlscfg.ServerFlagsConfig{
@@ -94,7 +96,7 @@ func AddFlags(flagSet *flag.FlagSet) {
 	flagSet.Bool(queryLogStaticAssetsAccess, false, "Log when static assets are accessed (for debugging)")
 	flagSet.String(queryUIConfig, "", "The path to the UI configuration file in JSON format")
 	flagSet.Bool(queryTokenPropagation, false, "Allow propagation of bearer token to be used by storage plugins")
-	flagSet.Duration(queryMaxClockSkewAdjust, 0, "The maximum delta by which span timestamps may be adjusted in the UI due to clock skew; set to 0s to disable clock skew adjustments")
+	flagSet.Duration(queryMaxClockSkewAdjust, defaultMaxClockSkewAdjust, "The maximum delta by which span timestamps may be adjusted in the UI due to clock skew; set to 0s to disable clock skew adjustments")
 	flagSet.Bool(queryEnableTracing, false, "Enables emitting jaeger-query traces")
 	tlsGRPCFlagsConfig.AddFlags(flagSet)
 	tlsHTTPFlagsConfig.AddFlags(flagSet)
@@ -140,18 +142,20 @@ func (qOpts *QueryOptions) InitFromViper(v *viper.Viper, logger *zap.Logger) (*Q
 
 // BuildQueryServiceOptions creates a QueryServiceOptions struct with appropriate adjusters and archive config
 func (qOpts *QueryOptions) BuildQueryServiceOptions(storageFactory storage.BaseFactory, logger *zap.Logger) *querysvc.QueryServiceOptions {
-	opts := &querysvc.QueryServiceOptions{}
+	opts := &querysvc.QueryServiceOptions{
+		MaxClockSkewAdjust: qOpts.MaxClockSkewAdjust,
+	}
 	if !opts.InitArchiveStorage(storageFactory, logger) {
 		logger.Info("Archive storage not initialized")
 	}
-
-	opts.Adjuster = adjuster.Sequence(querysvc.StandardAdjusters(qOpts.MaxClockSkewAdjust)...)
 
 	return opts
 }
 
 func (qOpts *QueryOptions) BuildQueryServiceOptionsV2(storageFactory storage.BaseFactory, logger *zap.Logger) *v2querysvc.QueryServiceOptions {
-	opts := &v2querysvc.QueryServiceOptions{}
+	opts := &v2querysvc.QueryServiceOptions{
+		MaxClockSkewAdjust: qOpts.MaxClockSkewAdjust,
+	}
 
 	ar, aw := v1adapter.InitializeArchiveStorage(storageFactory, logger)
 	if ar != nil && aw != nil {
@@ -160,8 +164,6 @@ func (qOpts *QueryOptions) BuildQueryServiceOptionsV2(storageFactory storage.Bas
 	} else {
 		logger.Info("Archive storage not initialized")
 	}
-
-	opts.Adjuster = v2adjuster.Sequence(v2adjuster.StandardAdjusters(qOpts.MaxClockSkewAdjust)...)
 
 	return opts
 }
@@ -197,6 +199,7 @@ func mapHTTPHeaderToOTELHeaders(h http.Header) map[string]configopaque.String {
 
 func DefaultQueryOptions() QueryOptions {
 	return QueryOptions{
+		MaxClockSkewAdjust: defaultMaxClockSkewAdjust,
 		HTTP: confighttp.ServerConfig{
 			Endpoint: ports.PortToHostPort(ports.QueryHTTP),
 		},
